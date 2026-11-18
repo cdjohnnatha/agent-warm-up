@@ -1,23 +1,18 @@
 # agent-warm-up
 
 Keep an AI agent CLI "warm" by firing a short, harmless prompt at it on a
-schedule — e.g. so a usage/session window (like Claude's rolling 5-hour
-window) starts earlier in the day, or just to pre-warm a local model.
-
-Agent-agnostic by design: the engine (`bin/warmup.sh`) only knows how to
-jitter, pick a message, log, and enforce a timeout. How to actually call your
-agent lives in a small config file you write, which defines one shell
-function: `run_agent()`.
+schedule, so a usage/session window (like Claude's rolling 5-hour window)
+starts earlier in the day instead of whenever your first real prompt happens.
 
 ## Why this exists
 
 Some AI agent plans (Claude Code included) meter usage in rolling windows
 rather than a fixed daily reset — e.g. a 5-hour window that starts the moment
 you send your first message. If your actual workday starts around 9 AM but
-the first prompt of the day happens a bit later, that window can start late
-too, and its reset then lands in the middle of the afternoon (for me,
-sometimes not until ~14:30) — right when I need the agent most, forcing a
-long, avoidable wait for a fresh window.
+the first prompt of the day happens a bit later, that window starts late too,
+and its reset then lands in the middle of the afternoon (for me, sometimes
+not until ~14:30) — right when I need the agent most, forcing a long,
+avoidable wait for a fresh window.
 
 The fix is simple in principle: send one throwaway message early, before the
 real workday starts, so the window's clock starts on your schedule instead
@@ -29,10 +24,12 @@ short, harmless prompt at a jittered time each weekday morning — no phone,
 no manual step, no babysitting.
 
 It started as a one-off `claude -p` cron-ish job for exactly that use case,
-then got generalized here so it isn't tied to one CLI: any agent that can be
-invoked from the command line (or a plain HTTP API) can be plugged in via a
-small `run_agent()` config (see "Writing a config for a different agent"
-below).
+then got generalized here so it isn't tied to one CLI or to warming up usage
+windows specifically. The engine (`bin/warmup.sh`) only knows how to jitter,
+pick a message, log, and enforce a timeout — any agent that can be invoked
+from the command line (or a plain HTTP API) can be plugged in via a small
+config file that defines one shell function, `run_agent()` (see "Writing a
+config for a different agent" below).
 
 ## How it works
 
