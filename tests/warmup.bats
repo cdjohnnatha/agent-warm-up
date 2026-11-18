@@ -76,6 +76,28 @@ EOF
     grep -q "run_agent failed or timed out" "$LOG_FILE"
 }
 
+@test "invokes the optional on_failure hook when run_agent fails" {
+    write_config $'run_agent() { return 1; }\non_failure() { echo "hook ran"; }'
+    run "$WARMUP" "$CONFIG"
+    [ "$status" -eq 1 ]
+    grep -q "invoking on_failure hook" "$LOG_FILE"
+    grep -q "hook ran" "$LOG_FILE"
+}
+
+@test "does not crash if the on_failure hook itself fails" {
+    write_config $'run_agent() { return 1; }\non_failure() { echo "boom" >&2; return 1; }'
+    run "$WARMUP" "$CONFIG"
+    [ "$status" -eq 1 ]
+    grep -q "on_failure hook itself failed" "$LOG_FILE"
+}
+
+@test "does not invoke on_failure when run_agent succeeds" {
+    write_config $'run_agent() { echo ok; }\non_failure() { echo "should not run"; }'
+    run "$WARMUP" "$CONFIG"
+    [ "$status" -eq 0 ]
+    ! grep -q "should not run" "$LOG_FILE"
+}
+
 @test "times out a hanging run_agent" {
     write_config $'TIMEOUT_SECONDS=1\nrun_agent() { sleep 5; echo "too late"; }'
     run timeout 10 "$WARMUP" "$CONFIG"
@@ -108,4 +130,22 @@ EOF
     run "$WARMUP" "$CONFIG"
     [ "$status" -eq 0 ]
     [ -f "$LOG_FILE" ]
+}
+
+@test "trims LOG_FILE to MAX_LOG_LINES before appending" {
+    for i in $(seq 1 20); do echo "old line $i"; done > "$LOG_FILE"
+    cat > "$CONFIG" <<EOF
+LOG_FILE="$LOG_FILE"
+JITTER_MAX_SECONDS=0
+TIMEOUT_SECONDS=5
+MAX_LOG_LINES=5
+MESSAGES=("hello")
+run_agent() { echo "ok"; }
+EOF
+    run "$WARMUP" "$CONFIG"
+    [ "$status" -eq 0 ]
+    # 5 kept old lines + 4 new log lines from this run = 9
+    [ "$(wc -l < "$LOG_FILE" | tr -d ' ')" -eq 9 ]
+    grep -q "old line 20" "$LOG_FILE"
+    ! grep -q "old line 15$" "$LOG_FILE"
 }

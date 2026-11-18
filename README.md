@@ -1,5 +1,7 @@
 # agent-warm-up
 
+[![CI](https://github.com/cdjohnnatha/agent-warm-up/actions/workflows/ci.yml/badge.svg)](https://github.com/cdjohnnatha/agent-warm-up/actions/workflows/ci.yml)
+
 Keep an AI agent CLI "warm" by firing a short, harmless prompt at it on a
 schedule, so a usage/session window (like Claude's rolling 5-hour window)
 starts earlier in the day instead of whenever your first real prompt happens.
@@ -108,11 +110,42 @@ A config is just a shell file sourced by `bin/warmup.sh`. It must set:
   agent's response to stdout, and returning non-zero on failure
 
 Optional: `JITTER_MAX_SECONDS` (default 600), `TIMEOUT_SECONDS` (default
-120), `TIMEOUT_BIN` (default: auto-detected `timeout`/`gtimeout`).
+120), `TIMEOUT_BIN` (default: auto-detected `timeout`/`gtimeout`),
+`MAX_LOG_LINES` (default 1000 — `LOG_FILE` is trimmed to this many lines
+before each run, so it doesn't grow forever), and `on_failure()` — a
+function (no arguments) that `bin/warmup.sh` calls, best-effort and
+non-fatal, after a failed `run_agent`. Useful for self-recovery, e.g.
+detecting an expired session and kicking off re-authentication (see
+"Authentication" below).
 
 See `config/claude.example.sh` (Claude Code CLI), `config/codex.example.sh`
 (OpenAI Codex CLI), and `config/http-api.example.sh` (raw HTTP API via
 `curl`, for agents with no CLI) for the pattern.
+
+## Authentication
+
+`bin/warmup.sh` has no concept of login, tokens, or credentials — it only
+calls `run_agent()`, and authentication is entirely that agent CLI's own
+business. In practice this means `run_agent()` reuses whatever session the
+CLI already has stored on disk (the Claude Code CLI, for example, keeps it
+in the OS keychain), exactly as if you'd typed the command yourself. There's
+nothing here to log in with, and nothing agent-specific about credentials
+ever touches this repo.
+
+The downside: if that session expires (password rotated, token revoked,
+logged out elsewhere), `run_agent` just starts failing — silently, as far as
+you're concerned, until you notice the gap in `LOG_FILE` or the window keeps
+resetting at the wrong time. There's no automatic renewal built into the
+engine.
+
+`config/claude.example.sh` softens that with its optional `on_failure()`
+hook: on a failed run, it checks `claude auth status --json` and, if logged
+out, fires `claude auth login` in the background. That command opens your
+default browser straight to the OAuth flow on its own — no extra plumbing
+needed here. It's still fire-and-forget: nothing can click "Authorize" for
+you, so you still need to be at the machine to finish it, but now the tab is
+already waiting instead of you having to first notice the problem, open a
+terminal, and remember which command fixes it.
 
 ## Security notes
 
@@ -150,3 +183,7 @@ bats tests/
 
 `shellcheck` is also run in CI (`.github/workflows/ci.yml`), which tests
 against both `ubuntu-latest` and `macos-latest`.
+
+## License
+
+[MIT](LICENSE)

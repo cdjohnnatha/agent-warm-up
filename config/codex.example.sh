@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2034  # these vars are read by bin/warmup.sh after sourcing this file
 # Example config: warms up the OpenAI Codex CLI (`codex exec`).
 # Adjust the binary path/flags to whatever your installed version expects.
 

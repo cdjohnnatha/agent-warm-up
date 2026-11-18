@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2034  # these vars are read by bin/warmup.sh after sourcing this file
 # Example config: warms up any HTTP chat-completion style API directly with
 # curl, for agents/providers that don't ship a CLI. Reads the API key from
 # an environment variable (never hardcode secrets in this file).
