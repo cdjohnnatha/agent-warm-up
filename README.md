@@ -9,6 +9,31 @@ jitter, pick a message, log, and enforce a timeout. How to actually call your
 agent lives in a small config file you write, which defines one shell
 function: `run_agent()`.
 
+## Why this exists
+
+Some AI agent plans (Claude Code included) meter usage in rolling windows
+rather than a fixed daily reset — e.g. a 5-hour window that starts the moment
+you send your first message. If your actual workday starts around 9 AM but
+the first prompt of the day happens a bit later, that window can start late
+too, and its reset then lands in the middle of the afternoon (for me,
+sometimes not until ~14:30) — right when I need the agent most, forcing a
+long, avoidable wait for a fresh window.
+
+The fix is simple in principle: send one throwaway message early, before the
+real workday starts, so the window's clock starts on your schedule instead
+of whenever you happen to get to your first real prompt. Doing that by hand
+every morning doesn't scale, and installing a chat app on a phone just to
+fire off a message at a fixed time felt like the wrong tool for the job. So
+this exists instead: a small, scheduled, unattended script that sends one
+short, harmless prompt at a jittered time each weekday morning — no phone,
+no manual step, no babysitting.
+
+It started as a one-off `claude -p` cron-ish job for exactly that use case,
+then got generalized here so it isn't tied to one CLI: any agent that can be
+invoked from the command line (or a plain HTTP API) can be plugged in via a
+small `run_agent()` config (see "Writing a config for a different agent"
+below).
+
 ## How it works
 
 ```
