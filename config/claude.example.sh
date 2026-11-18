@@ -1,13 +1,14 @@
-#!/usr/bin/env zsh
+#!/usr/bin/env bash
 # Example config: warms up the Claude Code CLI (`claude -p`).
 #
 # Copy this file somewhere outside the repo (or keep it here but gitignored,
 # see .gitignore) and adjust the absolute paths for your machine.
 
-LOG_FILE="$HOME/Library/Logs/agent-warmup-claude.log"
+LOG_FILE="$HOME/.local/state/agent-warmup/claude.log"
 JITTER_MAX_SECONDS=600
 TIMEOUT_SECONDS=120
-TIMEOUT_BIN="/opt/homebrew/bin/timeout"   # macOS: brew install coreutils
+# TIMEOUT_BIN is auto-detected by bin/warmup.sh (timeout on Linux, gtimeout
+# on macOS via `brew install coreutils`). Set it here only to override.
 
 MESSAGES=(
     "Give me 2-3 short bullet points of today's top tech news. Keep it very brief."

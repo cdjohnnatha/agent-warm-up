@@ -1,4 +1,4 @@
-#!/usr/bin/env zsh
+#!/usr/bin/env bash
 # Example config: warms up any HTTP chat-completion style API directly with
 # curl, for agents/providers that don't ship a CLI. Reads the API key from
 # an environment variable (never hardcode secrets in this file).
@@ -6,10 +6,10 @@
 # Usage: export MY_AGENT_API_KEY=... before this config is sourced, or set
 # it in your shell profile / launchd plist EnvironmentVariables.
 
-LOG_FILE="$HOME/Library/Logs/agent-warmup-http.log"
+LOG_FILE="$HOME/.local/state/agent-warmup/http.log"
 JITTER_MAX_SECONDS=600
 TIMEOUT_SECONDS=120
-TIMEOUT_BIN="/opt/homebrew/bin/timeout"
+# TIMEOUT_BIN is auto-detected (see claude.example.sh).
 
 API_URL="https://api.example.com/v1/chat/completions"
 MODEL="example-model"

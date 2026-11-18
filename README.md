@@ -38,11 +38,13 @@ bin/warmup.sh <config-file>
 2. Try it once by hand:
 
    ```bash
-   zsh bin/warmup.sh config/claude.sh
-   tail -f ~/Library/Logs/agent-warmup-claude.log
+   bin/warmup.sh config/claude.sh
+   tail -f ~/.local/state/agent-warmup/claude.log
    ```
 
-3. Schedule it (macOS, via a LaunchAgent):
+3. Schedule it.
+
+   **macOS** (LaunchAgent):
 
    ```bash
    ./install/install-macos-launchagent.sh \
@@ -55,8 +57,24 @@ bin/warmup.sh <config-file>
    it only fires at the scheduled time, not on every login/boot. Uninstall
    with `./install/uninstall-macos-launchagent.sh com.me.claude-warmup`.
 
-   On Linux, use cron or a systemd timer instead — just point either at
-   `bin/warmup.sh <config-file>`.
+   **Linux** (systemd `--user` timer):
+
+   ```bash
+   ./install/install-linux-systemd-timer.sh \
+       --name claude-warmup \
+       --config "$(pwd)/config/claude.sh" \
+       --on-calendar "Mon..Fri 07:25"
+   loginctl enable-linger "$USER"   # so it still fires while you're logged out
+   ```
+
+   Uninstall with `./install/uninstall-linux-systemd-timer.sh claude-warmup`.
+   Both installers take `--dry-run` to print the generated unit/plist
+   without touching your filesystem or calling `launchctl`/`systemctl`.
+
+   Plain `cron` works too, if you don't want systemd: just point a crontab
+   entry at `bin/warmup.sh <config-file>` — the jitter inside the script
+   already randomizes the effective fire time, so cron's own fixed minute is
+   fine.
 
 ## Writing a config for a different agent
 
@@ -85,4 +103,28 @@ See `config/claude.example.sh` (Claude Code CLI), `config/codex.example.sh`
   them into a command string, so prompt content can't be used to inject
   shell commands.
 - Keep `bin/warmup.sh` at `700` and any real config file at `600`
-  (the install script does this for you).
+  (the install scripts do this for you).
+
+## Linux vs macOS
+
+The engine (`bin/warmup.sh`) and the example configs are plain POSIX-ish
+`bash` — no zsh, no bash-4-only features — and auto-detect `timeout` (Linux,
+preinstalled) vs `gtimeout` (macOS, via `brew install coreutils`). Nothing
+needs to change to run it on Linux.
+
+The only OS-specific pieces are the schedulers: `install-macos-launchagent.sh`
+(LaunchAgent) vs `install-linux-systemd-timer.sh` (systemd `--user` timer).
+Use whichever matches your OS, or skip both and use plain `cron`.
+
+## Tests
+
+Requires [bats-core](https://github.com/bats-core/bats-core)
+(`brew install bats-core` on macOS, `apt install bats` on Debian/Ubuntu) and,
+for the timeout-related tests, a `timeout`/`gtimeout` binary (see above).
+
+```bash
+bats tests/
+```
+
+`shellcheck` is also run in CI (`.github/workflows/ci.yml`), which tests
+against both `ubuntu-latest` and `macos-latest`.

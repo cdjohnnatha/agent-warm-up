@@ -1,11 +1,11 @@
-#!/usr/bin/env zsh
+#!/usr/bin/env bash
 # Example config: warms up the OpenAI Codex CLI (`codex exec`).
 # Adjust the binary path/flags to whatever your installed version expects.
 
-LOG_FILE="$HOME/Library/Logs/agent-warmup-codex.log"
+LOG_FILE="$HOME/.local/state/agent-warmup/codex.log"
 JITTER_MAX_SECONDS=600
 TIMEOUT_SECONDS=120
-TIMEOUT_BIN="/opt/homebrew/bin/timeout"
+# TIMEOUT_BIN is auto-detected (see claude.example.sh).
 
 MESSAGES=(
     "Give me one short, interesting software engineering tip, 2 sentences max."

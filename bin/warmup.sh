@@ -1,5 +1,6 @@
-#!/usr/bin/env zsh
-# Generic warm-up engine.
+#!/usr/bin/env bash
+# Generic warm-up engine. Runs on Linux and macOS with plain bash (no
+# bash-4-only features), no zsh dependency.
 #
 # Sends a short prompt to whatever AI agent CLI you configure, so a
 # usage/session window (e.g. a 5-hour rolling window) starts earlier in the
@@ -26,7 +27,7 @@
 set -eu
 umask 077
 
-export PATH="/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+export PATH="/usr/local/bin:/opt/homebrew/bin:/home/linuxbrew/.linuxbrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 
 CONFIG="${1:-}"
 if [[ -z "$CONFIG" || ! -f "$CONFIG" ]]; then
@@ -46,27 +47,33 @@ if [[ -z "${TIMEOUT_BIN:-}" ]]; then
     TIMEOUT_BIN="$(command -v timeout || command -v gtimeout || true)"
 fi
 if [[ -z "$TIMEOUT_BIN" ]]; then
-    echo "No 'timeout' binary found (Linux: coreutils; macOS: brew install coreutils -> gtimeout)." >&2
+    echo "No 'timeout' binary found (Linux: coreutils, preinstalled; macOS: brew install coreutils -> gtimeout)." >&2
     exit 1
 fi
 
+mkdir -p "$(dirname "$LOG_FILE")"
 log() { echo "$(date '+%Y-%m-%d %H:%M:%S') $1" >> "$LOG_FILE"; }
 
-if ! typeset -f run_agent >/dev/null; then
+if ! declare -f run_agent > /dev/null; then
     log "ERROR: config '$CONFIG' does not define a run_agent() function"
     exit 1
 fi
 
 log "starting, jittering up to ${JITTER_MAX_SECONDS}s..."
-sleep $((RANDOM % JITTER_MAX_SECONDS))
+if [[ "$JITTER_MAX_SECONDS" -gt 0 ]]; then
+    sleep $((RANDOM % JITTER_MAX_SECONDS))
+fi
 
-MSG="${MESSAGES[$((RANDOM % ${#MESSAGES[@]} + 1))]}"
+MSG="${MESSAGES[$((RANDOM % ${#MESSAGES[@]}))]}"
 log "message: $MSG"
 
 # Re-source the config in a fresh subshell so run_agent() is available to
 # the external `timeout` binary, with CONFIG/MSG passed positionally
-# (never string-interpolated) to avoid any injection risk.
-if RESPONSE="$("$TIMEOUT_BIN" "$TIMEOUT_SECONDS" zsh -c 'source "$1"; run_agent "$2"' _ "$CONFIG" "$MSG" 2>>"$LOG_FILE")"; then
+# (never string-interpolated) to avoid any injection risk. The inner
+# single-quoted script is intentional: $1/$2 must expand in the *inner*
+# bash -c, not in this outer shell.
+# shellcheck disable=SC2016
+if RESPONSE="$("$TIMEOUT_BIN" "$TIMEOUT_SECONDS" bash -c 'source "$1"; run_agent "$2"' _ "$CONFIG" "$MSG" 2>>"$LOG_FILE")"; then
     log "response: $RESPONSE"
     log "done"
 else
